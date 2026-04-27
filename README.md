@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ARIA Live Product Template
+
+Centralized baseline template for ARIA-generated MVPs. This repository is designed to be copied into E2B and then extended by agents with idea-specific features.
 
 ## Getting Started
 
-First, run the development server:
+Install and run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Template Goals
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- End-user product app shell (not ARIA builder UI).
+- Centralized auth and billing integration points.
+- Predictable folder structure so agents can extend features quickly.
+- Broad preloaded shadcn component set to avoid repetitive setup.
 
-## Learn More
+## Included Surfaces
 
-To learn more about Next.js, take a look at the following resources:
+- `/(auth)/login`: single auth entrypoint (`log in or sign up`).
+- `/(app)/dashboard`: generic end-user dashboard baseline.
+- `/(app)/billing`: centralized billing action UI.
+- `/(app)/settings`: account preference baseline.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Central Contracts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Build config schema: `src/config/build-config.ts`
+- Build config type: `src/types/build-config.ts`
+- ARIA API client baseline: `src/lib/api/client.ts`
+- Environment access helpers: `src/lib/env.ts`
+- Neon auth wiring: `src/lib/auth/*` + `src/app/api/auth/[...path]/route.ts`
 
-## Deploy on Vercel
+## Environment Variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Copy `.env.example` to `.env.local` for local testing.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+In production, ARIA should inject all required values automatically.
+
+### ARIA domains
+
+ARIA control-plane domains are:
+
+- `https://alpha.ariaagi.com`
+- `https://beta.ariaagi.com`
+- `https://app.ariaagi.com`
+
+When configuring Neon Auth providers, include callback/redirect URLs for these hosts.
+
+### Neon Auth setup checklist (Google + Email OTP)
+
+For each generated MVP app, ARIA should:
+
+1. Provision Neon Auth for the app project.
+2. Enable Google provider and Email OTP provider in Neon Auth.
+3. Configure callback/redirect URLs for:
+   - `https://alpha.ariaagi.com`
+   - `https://beta.ariaagi.com`
+   - `https://app.ariaagi.com`
+   - the generated app domain
+4. Inject:
+   - `NEON_AUTH_BASE_URL`
+   - `NEON_AUTH_COOKIE_SECRET`
+
+If `NEON_AUTH_BASE_URL` is missing, `/login` shows a setup warning by design.
+
+## Quality Gates
+
+```bash
+npm run lint
+npm run build
+npm run test:e2e
+```
