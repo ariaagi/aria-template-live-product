@@ -1,7 +1,9 @@
-import { AppShell } from "@/components/app/app-shell";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getAuthServer } from "@/lib/auth/server";
-import { getTemplateGoogleSession } from "@/lib/server/auth/template-google-session";
+
+import { AppShell } from "@/components/app/app-shell";
+import { getBuildConfig } from "@/config/build-config";
+import { auth } from "@/lib/auth";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -9,16 +11,21 @@ type AppLayoutProps = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AppLayout({ children }: AppLayoutProps) {
+export default async function AppLayout({ children }: AppLayoutProps): Promise<React.ReactElement> {
   if (process.env.E2E_BYPASS_AUTH !== "true") {
-    const auth = getAuthServer();
-    const session = auth ? (await auth.getSession()).data : null;
-    const googleSession = await getTemplateGoogleSession();
-
-    if (!session?.user && !googleSession) {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (!session) {
       redirect("/login");
     }
   }
 
-  return <AppShell>{children}</AppShell>;
+  const buildConfig = getBuildConfig();
+  const logoSrc = buildConfig.branding.logoUrl?.trim() || undefined;
+  return (
+    <AppShell appName={buildConfig.appName} appTagline={buildConfig.appTagline} logoSrc={logoSrc}>
+      {children}
+    </AppShell>
+  );
 }

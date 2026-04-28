@@ -7,9 +7,9 @@ let cached: NeonSql | null = null;
 
 function resolveDatabaseUrl(): string {
   const url =
-    process.env.NEON_DATABASE_URL?.trim() ?? process.env.DATABASE_URL?.trim() ?? "";
+    process.env.DATABASE_URL?.trim() ?? process.env.NEON_DATABASE_URL?.trim() ?? "";
   if (!url) {
-    throw new Error("NEON_DATABASE_URL or DATABASE_URL is not set");
+    throw new Error("DATABASE_URL or NEON_DATABASE_URL is not set");
   }
   return url;
 }

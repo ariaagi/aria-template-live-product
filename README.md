@@ -1,10 +1,23 @@
 # ARIA Live Product Template
 
-Centralized baseline template for ARIA-generated MVPs. This repository is designed to be copied into E2B and then extended by agents with idea-specific features.
+Production template for ARIA-generated end-user MVP apps.
 
-## Getting Started
+This repo is meant to be used as a **GitHub template repository**. ARIA (or a developer) creates a new app repo from this base, injects build config + env vars, and extends features in `Home`.
 
-Install and run:
+## What This Template Includes
+
+- Better Auth + Neon Postgres baseline auth wiring.
+- App shell with `Home`, `Billing`, and `Settings`.
+- Centralized build configuration contract for branding, pricing, and app metadata.
+- Ready-to-extend structure for agent-generated product features.
+
+## Routes
+
+- Auth: `/auth/sign-in`, `/auth/sign-up`, `/login`
+- App: `/home`, `/billing`, `/settings`
+- API: `/api/auth/*`, `/api/settings/profile`
+
+## Local Development
 
 ```bash
 npm install
@@ -13,62 +26,43 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Template Goals
-
-- End-user product app shell (not ARIA builder UI).
-- Centralized auth and billing integration points.
-- Predictable folder structure so agents can extend features quickly.
-- Broad preloaded shadcn component set to avoid repetitive setup.
-
-## Included Surfaces
-
-- `/(auth)/login`: single auth entrypoint (`log in or sign up`).
-- `/(app)/dashboard`: generic end-user dashboard baseline.
-- `/(app)/billing`: centralized billing action UI.
-- `/(app)/settings`: account preference baseline.
-
-## Central Contracts
-
-- Build config schema: `src/config/build-config.ts`
-- Build config type: `src/types/build-config.ts`
-- ARIA API client baseline: `src/lib/api/client.ts`
-- Environment access helpers: `src/lib/env.ts`
-- Neon auth wiring: `src/lib/auth/*` + `src/app/api/auth/[...path]/route.ts`
-
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` for local testing.
+Copy `.env.example` to `.env.local` and fill values:
 
-In production, ARIA should inject all required values automatically.
+```bash
+cp .env.example .env.local
+```
 
-### ARIA domains
+Required for normal auth + DB behavior:
 
-ARIA control-plane domains are:
+- `NEXT_PUBLIC_APP_URL`
+- `BETTER_AUTH_SECRET`
+- `DATABASE_URL` (or `NEON_DATABASE_URL`)
 
-- `https://alpha.ariaagi.com`
-- `https://beta.ariaagi.com`
-- `https://app.ariaagi.com`
+Optional / feature-specific:
 
-When configuring Neon Auth providers, include callback/redirect URLs for these hosts.
+- `BETTER_AUTH_URL`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `NEXT_PUBLIC_ARIA_API_BASE_URL`
+- `ARIA_BUILD_CONFIG_JSON`
+- `E2E_BYPASS_AUTH` (test-only)
 
-### Neon Auth setup checklist (Google + Email OTP)
+### Google OAuth Redirect URI
 
-For each generated MVP app, ARIA should:
+If Google OAuth is enabled, configure:
 
-1. Provision Neon Auth for the app project.
-2. Enable Google provider and Email OTP provider in Neon Auth.
-3. Configure callback/redirect URLs for:
-   - `https://alpha.ariaagi.com`
-   - `https://beta.ariaagi.com`
-   - `https://app.ariaagi.com`
-   - the generated app domain
-4. Inject:
-   - `NEON_AUTH_BASE_URL`
-   - `NEON_AUTH_COOKIE_SECRET`
+- `${NEXT_PUBLIC_APP_URL}/api/auth/callback/google`
 
-If `NEON_AUTH_BASE_URL` is missing, `/login` shows a setup warning by design.
+## Build Config Contract
 
-## Quality Gates
+These files define the serialized configuration ARIA injects at build time:
+
+- `src/config/build-config.ts`
+- `src/types/build-config.ts`
+
+## Quality Checks
 
 ```bash
 npm run lint

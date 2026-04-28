@@ -7,6 +7,7 @@ const buildConfigSchema = z.object({
   ideaId: z.string().min(6),
   monetizationMode: z.enum(["product", "subscription"]),
   pricing: z.object({
+    planName: z.string().min(2).optional(),
     amount: z.number().positive(),
     currency: z.string().min(3).max(3).transform((value) => value.toUpperCase()),
     interval: z.enum(["month", "year"]).optional(),
@@ -15,6 +16,7 @@ const buildConfigSchema = z.object({
   branding: z.object({
     primaryColor: z.string().min(4),
     accentColor: z.string().min(4),
+    logoUrl: z.string().trim().optional(),
   }),
 });
 
@@ -24,6 +26,7 @@ const FALLBACK_CONFIG: BuildConfig = {
   ideaId: "template-idea",
   monetizationMode: "subscription",
   pricing: {
+    planName: "Starter",
     amount: 19,
     currency: "USD",
     interval: "month",
@@ -32,6 +35,7 @@ const FALLBACK_CONFIG: BuildConfig = {
   branding: {
     primaryColor: "#111111",
     accentColor: "#525252",
+    logoUrl: "",
   },
 };
 

@@ -1,28 +1,43 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import Image from "next/image";
-import { Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { AuthView } from "@neondatabase/auth/react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
+
+import { authClient } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+/**
+ * Pixel-match Google + email submit: same box model as inputs (`Input` is `h-10`).
+ * `!` ensures height wins over variant styles after `cn(buttonVariants(), className)`.
+ */
+const AUTH_BTN_H =
+  "box-border !h-10 !min-h-10 !max-h-10 shrink-0 py-0 leading-none";
+
+/** Full-width on mobile, constrained on larger screens. */
+const AUTH_BUTTON_WRAP = "mx-auto w-full sm:max-w-xs";
 
 type AuthViewCardProps = {
   pathname: "sign-in" | "sign-up";
-  hasNeonAuth: boolean;
+  hasGoogleOAuth: boolean;
+  appName: string;
+  logoSrc?: string | null;
 };
 
 function GoogleAuthQueryBanner(): React.ReactElement | null {
   const searchParams = useSearchParams();
   const key = searchParams.get("google");
   const text =
-    key === "soon"
-      ? "Google sign-in is not configured yet (missing GOOGLE_OAUTH_CLIENT_ID / SECRET)."
-      : key === "error"
-        ? "Google sign-in failed. Try again or use another method."
+    key === "error"
+        ? "Google sign-in failed. Try again or use email below."
         : key === "ok"
           ? "Google verified, but no session was created."
           : null;
@@ -34,26 +49,55 @@ function GoogleAuthQueryBanner(): React.ReactElement | null {
   );
 }
 
-function GoogleButtonAndSeparator(): React.ReactElement {
+function GoogleButtonAndSeparator(props: {
+  hasGoogleOAuth: boolean;
+}): React.ReactElement {
+  const { hasGoogleOAuth } = props;
+  const [googlePending, setGooglePending] = useState(false);
+
   return (
-    <div className="grid w-full gap-5">
-      <a
-        href="/api/v1/auth/google/start"
-        className={cn(
-          buttonVariants({ variant: "outline", size: "lg" }),
-          "inline-flex h-12 w-full items-center justify-center gap-2.5 font-medium"
-        )}
-      >
-        <Image
-          src="/logos/googlesearch.png"
-          alt=""
-          width={22}
-          height={22}
-          className="size-[22px] shrink-0 object-contain"
-        />
-        <span>Continue with Google</span>
-      </a>
-      <div className="flex items-center gap-3 py-2">
+    <div className="grid w-full gap-4">
+      <div className={AUTH_BUTTON_WRAP}>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            AUTH_BTN_H,
+            "w-full justify-center gap-2 rounded-md"
+          )}
+          disabled={!hasGoogleOAuth || googlePending}
+          onClick={async () => {
+            if (!hasGoogleOAuth) {
+              return;
+            }
+            setGooglePending(true);
+            try {
+              const { error } = await authClient.signIn.social({
+                provider: "google",
+                callbackURL: "/home",
+              });
+              if (error) {
+                toast.error(error.message ?? "Could not start Google sign-in.");
+              }
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Network error — check your URL/port.");
+            } finally {
+              setGooglePending(false);
+            }
+          }}
+        >
+          <Image
+            src="/logos/googlesearch.png"
+            alt=""
+            aria-hidden
+            width={16}
+            height={16}
+            className="size-4 shrink-0 rounded-sm"
+          />
+          {googlePending ? "Redirecting…" : "Continue with Google"}
+        </Button>
+      </div>
+      <div className="flex items-center gap-3 py-1">
         <Separator className="flex-1" />
         <span className="shrink-0 text-xs text-muted-foreground">or</span>
         <Separator className="flex-1" />
@@ -62,61 +106,188 @@ function GoogleButtonAndSeparator(): React.ReactElement {
   );
 }
 
-export function AuthViewCard({ pathname, hasNeonAuth }: AuthViewCardProps): React.ReactElement {
+export function AuthViewCard({
+  pathname,
+  hasGoogleOAuth,
+  appName,
+  logoSrc,
+}: AuthViewCardProps): React.ReactElement {
+  const router = useRouter();
   const isSignIn = pathname === "sign-in";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [formPending, setFormPending] = useState(false);
 
   return (
-    <section className="w-full max-w-md space-y-8">
+    <section className="w-full max-w-md space-y-6 sm:space-y-8">
+      <div className="flex items-center justify-center gap-2">
+        {logoSrc ? (
+          <Image
+            src={logoSrc}
+            alt=""
+            aria-hidden
+            width={20}
+            height={20}
+            className="size-5 rounded-sm object-cover"
+          />
+        ) : null}
+        <p className="text-sm font-medium text-foreground">{appName}</p>
+      </div>
       <Suspense fallback={null}>
         <GoogleAuthQueryBanner />
       </Suspense>
 
-      {hasNeonAuth ? (
-        <AuthView
-          pathname={pathname}
-          className="w-full max-w-md"
-          classNames={{
-            base: "max-w-md gap-6 py-6",
-            header: "gap-0 pb-1",
-            content: "gap-8 pt-6",
-            footer: "mt-2 gap-2 pt-2",
-          }}
-          cardHeader={
-            <div className="grid w-full gap-5 text-center">
-              <CardTitle
-                className={cn(
-                  "text-lg md:text-xl",
-                  "font-heading leading-snug font-medium text-center"
-                )}
-              >
-                {isSignIn ? "Sign In" : "Sign Up"}
-              </CardTitle>
-              <CardDescription className="text-balance text-xs leading-relaxed text-muted-foreground md:text-sm">
-                {isSignIn
-                  ? "Enter your email below to login to your account"
-                  : "Enter your email below to create your account"}
-              </CardDescription>
-              <div className="w-full text-left">
-                <GoogleButtonAndSeparator />
+      <Card className="w-full max-w-md gap-0 overflow-hidden py-0">
+        <CardHeader
+          className={cn(
+            "grid w-full gap-4 border-b border-border/50 px-4 py-5 sm:px-6 sm:py-6",
+            isSignIn ? "text-center" : "text-center"
+          )}
+        >
+          <CardTitle
+            className={cn(
+              "text-lg md:text-xl",
+              "font-heading leading-snug font-medium text-center"
+            )}
+          >
+            {isSignIn ? "Sign In" : "Sign Up"}
+          </CardTitle>
+          <CardDescription className="text-balance text-xs leading-relaxed text-muted-foreground md:text-sm">
+            {isSignIn
+              ? "Enter your email below to login to your account"
+              : "Enter your email below to create your account"}
+          </CardDescription>
+          <div className="w-full text-left">
+            <GoogleButtonAndSeparator hasGoogleOAuth={hasGoogleOAuth} />
+          </div>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 px-4 py-5 sm:gap-5 sm:px-6 sm:py-6">
+          <form
+            className="grid w-full items-start gap-4 sm:gap-5"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setFormPending(true);
+              try {
+                if (isSignIn) {
+                  const { error } = await authClient.signIn.email({
+                    email: email.trim(),
+                    password,
+                    callbackURL: "/home",
+                  });
+                  if (error) {
+                    toast.error(error.message ?? "Sign in failed.");
+                    return;
+                  }
+                } else {
+                  const { error } = await authClient.signUp.email({
+                    email: email.trim(),
+                    password,
+                    name: name.trim() || email.trim().split("@")[0] || "User",
+                    callbackURL: "/home",
+                  });
+                  if (error) {
+                    toast.error(error.message ?? "Sign up failed.");
+                    return;
+                  }
+                }
+                router.push("/home");
+                router.refresh();
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "Something went wrong. Try again."
+                );
+              } finally {
+                setFormPending(false);
+              }
+            }}
+          >
+            {!isSignIn ? (
+              <div className="grid gap-2.5">
+                <Label htmlFor="auth-name">Name</Label>
+                <Input
+                  id="auth-name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Jane"
+                  value={name}
+                  onChange={(ev) => setName(ev.target.value)}
+                />
               </div>
+            ) : null}
+            <div className="grid gap-2.5">
+              <Label htmlFor="auth-email">Email</Label>
+              <Input
+                id="auth-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="m@example.com"
+                required
+                value={email}
+                onChange={(ev) => setEmail(ev.target.value)}
+              />
             </div>
-          }
-        />
-      ) : (
-        <Card className="w-full max-w-md gap-6 py-6">
-          <CardHeader className="grid gap-6">
-            <GoogleButtonAndSeparator />
-          </CardHeader>
-          <CardContent className="pt-2">
-            <Alert>
-              <AlertTitle>Auth not configured yet</AlertTitle>
-              <AlertDescription>
-                ARIA must inject `NEON_AUTH_BASE_URL` and provider credentials for this app.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      )}
+            <div className="grid gap-2.5">
+              <Label htmlFor="auth-password">Password</Label>
+              <Input
+                id="auth-password"
+                name="password"
+                type="password"
+                autoComplete={isSignIn ? "current-password" : "new-password"}
+                required
+                value={password}
+                onChange={(ev) => setPassword(ev.target.value)}
+              />
+            </div>
+            <div className={cn(AUTH_BUTTON_WRAP, "mt-0.5")}>
+              <Button
+                type="submit"
+                className={cn(
+                  AUTH_BTN_H,
+                  "w-full rounded-md text-primary-foreground"
+                )}
+                disabled={formPending}
+              >
+                {formPending
+                  ? isSignIn
+                    ? "Signing in…"
+                    : "Creating account…"
+                  : isSignIn
+                    ? "Sign in with email"
+                    : "Create account"}
+              </Button>
+            </div>
+          </form>
+
+          <p className="text-center text-xs text-muted-foreground">
+            {isSignIn ? (
+              <>
+                Need an account?{" "}
+                <Link
+                  href="/auth/sign-up"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Sign up
+                </Link>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <Link
+                  href="/auth/sign-in"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
+          </p>
+
+        </CardContent>
+      </Card>
     </section>
   );
 }

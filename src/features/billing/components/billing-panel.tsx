@@ -1,33 +1,40 @@
 import { CreditCard, ExternalLink, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { getBuildConfig } from "@/config/build-config";
 
 export function BillingPanel() {
+  const buildConfig = getBuildConfig();
+  const intervalSuffix = buildConfig.pricing.interval ? `/${buildConfig.pricing.interval}` : "";
+  const planLabel = buildConfig.pricing.planName?.trim() || "Starter";
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: buildConfig.pricing.currency,
+    maximumFractionDigits: Number.isInteger(buildConfig.pricing.amount) ? 0 : 2,
+  }).format(buildConfig.pricing.amount);
+
   return (
     <section className="space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
         <p className="text-sm text-muted-foreground">
-          Payment actions are routed through centralized ARIA backend endpoints.
+          Manage your plan, payments, and subscription details.
         </p>
       </header>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
             Current plan
           </CardTitle>
-          <CardDescription>Template placeholder for account status and usage limits.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="font-medium">Starter</p>
-            <p className="text-sm text-muted-foreground">$19/month - 1 workspace seat</p>
+          <div className="flex items-center gap-3">
+            <p className="font-medium">{planLabel}</p>
+            <p className="text-sm text-muted-foreground">{`${amount}${intervalSuffix}`}</p>
+            <Badge variant="secondary">Active</Badge>
           </div>
-          <Badge variant="secondary">Active</Badge>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-3">

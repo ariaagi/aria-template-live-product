@@ -9,6 +9,7 @@ export type IntegrationProvider =
   | "vercel";
 
 export interface PricingConfig {
+  planName?: string;
   amount: number;
   currency: string;
   interval?: "month" | "year";
@@ -24,5 +25,6 @@ export interface BuildConfig {
   branding: {
     primaryColor: string;
     accentColor: string;
+    logoUrl?: string;
   };
 }

@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neonAuthMiddleware } from "@neondatabase/auth/next/server";
 
-export default function proxy(request: NextRequest) {
-  const bypass = process.env.E2E_BYPASS_AUTH === "true";
-  const hasNeonAuth = Boolean(process.env.NEON_AUTH_BASE_URL);
-
-  if (bypass || !hasNeonAuth) {
-    return NextResponse.next();
-  }
-
-  const protectedMiddleware = neonAuthMiddleware({
-    loginUrl: "/login",
-  });
-
-  return protectedMiddleware(request);
+/**
+ * App routes enforce auth in `(app)/layout.tsx`. Middleware stays a no-op so we
+ * do not duplicate cookie/session logic here.
+ */
+export default function proxy(request: NextRequest): NextResponse {
+  void request;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/billing/:path*", "/settings/:path*"],
+  matcher: ["/home/:path*", "/dashboard/:path*", "/billing/:path*", "/settings/:path*"],
 };

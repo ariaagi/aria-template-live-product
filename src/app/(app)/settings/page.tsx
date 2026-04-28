@@ -1,7 +1,6 @@
+import { UserRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { SettingsProfileForm } from "@/features/settings/components/settings-profile-form";
 
 export default function SettingsPage() {
   return (
@@ -9,31 +8,22 @@ export default function SettingsPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Core account preferences. Agents can extend this based on app needs.
+          Manage your account and application preferences.
         </p>
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Basic account-level configuration.</CardDescription>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <CardTitle className="flex items-center gap-2">
+            <UserRound className="h-5 w-5" />
+            Profile
+          </CardTitle>
+          <CardDescription>
+            Manage your profile preferences and account details.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="display-name">Display name</Label>
-            <Input id="display-name" placeholder="Jane Doe" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" placeholder="jane@company.com" type="email" />
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Product updates</p>
-              <p className="text-xs text-muted-foreground">Receive occasional release updates.</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
+        <CardContent>
+          <SettingsProfileForm />
         </CardContent>
       </Card>
     </section>

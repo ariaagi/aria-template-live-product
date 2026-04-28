@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { NeonAuthProvider } from "@/components/providers/neon-auth-provider";
+import { Geist_Mono, Inter } from "next/font/google";
+import { AppAuthProvider } from "@/components/providers/app-auth-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
 });
 
 const geistMono = Geist_Mono({
@@ -23,18 +25,18 @@ export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>): React.ReactElement {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn(inter.variable, geistMono.variable, "h-full antialiased")}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <NeonAuthProvider>
+      <body className={cn(inter.className, "flex min-h-full flex-col")}>
+        <AppAuthProvider>
           {children}
           <Toaster />
-        </NeonAuthProvider>
+        </AppAuthProvider>
       </body>
     </html>
   );

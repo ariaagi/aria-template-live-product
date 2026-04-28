@@ -11,7 +11,7 @@ export function DashboardOverview() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Home</h1>
         <p className="text-sm text-muted-foreground">
           End-user home screen. Agents can swap these widgets based on idea domain.
         </p>
