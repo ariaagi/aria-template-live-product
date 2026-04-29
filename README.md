@@ -46,7 +46,7 @@ Optional / feature-specific:
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `NEXT_PUBLIC_ARIA_API_BASE_URL`
-- `ARIA_BUILD_CONFIG_JSON`
+- `ARIA_BUILD_CONFIG_JSON` (optional legacy override; prefer `aria-build.config.json` in the repo)
 - `E2E_BYPASS_AUTH` (test-only)
 
 ### Google OAuth Redirect URI
@@ -57,9 +57,10 @@ If Google OAuth is enabled, configure:
 
 ## Build Config Contract
 
-These files define the serialized configuration ARIA injects at build time:
+ARIA commits **`aria-build.config.json`** at the repository root before the first Vercel deploy (name, tagline, pricing, branding, `logoUrl` as a public path or https URL). The app reads that file on the server; secrets stay in env only.
 
-- `src/config/build-config.ts`
+- `aria-build.config.json` (injected by ARIA — source of truth for product copy and branding)
+- `src/config/build-config.ts` — loads the file, then optional `ARIA_BUILD_CONFIG_JSON`, then defaults
 - `src/types/build-config.ts`
 
 ## Quality Checks

@@ -1,5 +1,10 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { z } from "zod";
 import type { BuildConfig } from "@/types/build-config";
+
+const ARIA_BUILD_FILE = "aria-build.config.json";
 
 const buildConfigSchema = z.object({
   appName: z.string().min(2),
@@ -8,7 +13,7 @@ const buildConfigSchema = z.object({
   monetizationMode: z.enum(["product", "subscription"]),
   pricing: z.object({
     planName: z.string().min(2).optional(),
-    amount: z.number().positive(),
+    amount: z.number().nonnegative(),
     currency: z.string().min(3).max(3).transform((value) => value.toUpperCase()),
     interval: z.enum(["month", "year"]).optional(),
   }),
@@ -39,16 +44,40 @@ const FALLBACK_CONFIG: BuildConfig = {
   },
 };
 
-export function getBuildConfig(): BuildConfig {
-  const rawConfig = process.env.ARIA_BUILD_CONFIG_JSON;
-  if (!rawConfig) {
-    return FALLBACK_CONFIG;
+function readBuildConfigFile(): BuildConfig | null {
+  const path = join(process.cwd(), ARIA_BUILD_FILE);
+  if (!existsSync(path)) {
+    return null;
   }
-
   try {
-    const parsed = JSON.parse(rawConfig) as unknown;
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
     return buildConfigSchema.parse(parsed);
   } catch {
-    return FALLBACK_CONFIG;
+    return null;
   }
+}
+
+/**
+ * App metadata and branding. Prefer `aria-build.config.json` in the repo root
+ * (committed by ARIA before deploy). Fallback: `ARIA_BUILD_CONFIG_JSON` for one-off
+ * or legacy. Last resort: template defaults.
+ */
+export function getBuildConfig(): BuildConfig {
+  const fromFile = readBuildConfigFile();
+  if (fromFile) {
+    return fromFile;
+  }
+
+  const rawConfig = process.env.ARIA_BUILD_CONFIG_JSON;
+  if (rawConfig) {
+    try {
+      const parsed = JSON.parse(rawConfig) as unknown;
+      return buildConfigSchema.parse(parsed);
+    } catch {
+      return FALLBACK_CONFIG;
+    }
+  }
+
+  return FALLBACK_CONFIG;
 }
