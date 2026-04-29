@@ -68,24 +68,35 @@ function readBuildConfigFile(): BuildConfig | null {
 }
 
 /**
- * App metadata and branding. Prefer `aria-build.config.json` in the repo root
- * (committed by ARIA before deploy). Fallback: `ARIA_BUILD_CONFIG_JSON` for one-off
- * or legacy. Last resort: template defaults.
+ * App metadata and branding.
+ *
+ * 1) `ARIA_BUILD_CONFIG_JSON` when set (ARIA MVP sets this on the Vercel project so the app
+ *    does not depend on `readFileSync` of `aria-build.config.json` being present in the
+ *    serverless trace — a common cause of always seeing fallback "Template App" on Vercel).
+ * 2) `aria-build.config.json` in the repo root (local dev and file-based deploys).
+ * 3) Template defaults.
  */
 export function getBuildConfig(): BuildConfig {
+  const rawEnv = process.env.ARIA_BUILD_CONFIG_JSON?.trim();
+  if (rawEnv) {
+    try {
+      const parsed = JSON.parse(rawEnv) as unknown;
+      const result = buildConfigSchema.safeParse(parsed);
+      if (result.success) {
+        return result.data;
+      }
+      console.error(
+        "[getBuildConfig] Invalid ARIA_BUILD_CONFIG_JSON (trying file):",
+        result.error.flatten()
+      );
+    } catch (e) {
+      console.error("[getBuildConfig] Failed to parse ARIA_BUILD_CONFIG_JSON:", e);
+    }
+  }
+
   const fromFile = readBuildConfigFile();
   if (fromFile) {
     return fromFile;
-  }
-
-  const rawConfig = process.env.ARIA_BUILD_CONFIG_JSON;
-  if (rawConfig) {
-    try {
-      const parsed = JSON.parse(rawConfig) as unknown;
-      return buildConfigSchema.parse(parsed);
-    } catch {
-      return FALLBACK_CONFIG;
-    }
   }
 
   return FALLBACK_CONFIG;
