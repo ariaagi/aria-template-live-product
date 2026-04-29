@@ -37,11 +37,7 @@ export function BillingPanel() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Button className="justify-between" type="button" variant="outline">
-          Set up payments
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+      <div className="grid gap-3 sm:grid-cols-2">
         <Button className="justify-between" type="button">
           Upgrade plan
           <Sparkles className="h-4 w-4" />
