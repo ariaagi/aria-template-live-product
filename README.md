@@ -2,7 +2,7 @@
 
 Production template for ARIA-generated end-user MVP apps.
 
-This repo is meant to be used as a **GitHub template repository**. ARIA (or a developer) creates a new app repo from this base, injects build config + env vars, and extends features in `Home`.
+This repo is meant to be used as a **GitHub template repository**. ARIA (or a developer) creates a new app repo from this base, commits **product config** into the repo, injects **secrets** via env on Vercel, and extends features in `Home`.
 
 ## What This Template Includes
 
@@ -26,6 +26,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+The repo includes a default **`aria-build.config.json`** at the root so `npm run dev` matches production behavior without setting env.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and fill values:
@@ -46,7 +48,7 @@ Optional / feature-specific:
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `NEXT_PUBLIC_ARIA_API_BASE_URL`
-- `ARIA_BUILD_CONFIG_JSON`
+- `ARIA_BUILD_CONFIG_JSON` (optional legacy override; prefer **`aria-build.config.json`** in the repo)
 - `E2E_BYPASS_AUTH` (test-only)
 
 ### Google OAuth Redirect URI
@@ -57,10 +59,19 @@ If Google OAuth is enabled, configure:
 
 ## Build Config Contract
 
-These files define the serialized configuration ARIA injects at build time:
+**Product copy, pricing, and branding** live in **`aria-build.config.json`** at the repository root. ARIA should **commit** that file (and optional assets under `public/`) **before** the first Vercel deploy. Use **`branding.logoUrl`** as a path served from `public/` (e.g. `/brand/logo.png`) or an `https://` URL—not secrets.
 
-- `src/config/build-config.ts`
-- `src/types/build-config.ts`
+Resolution order in **`getBuildConfig()`**:
+
+1. **`aria-build.config.json`** on disk (repo root)
+2. **`ARIA_BUILD_CONFIG_JSON`** (optional override)
+3. Built-in defaults
+
+Reference files:
+
+- `aria-build.config.json` — injected / committed by ARIA (source of truth for deploys)
+- `src/config/build-config.ts` — loads config (file → env → defaults)
+- `src/types/build-config.ts` — TypeScript types
 
 ## Quality Checks
 
