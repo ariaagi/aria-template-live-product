@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { RiMailLine, RiUserAddLine } from "@remixicon/react";
 
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -247,10 +248,17 @@ export function AuthViewCard({
                 type="submit"
                 className={cn(
                   AUTH_BTN_H,
-                  "w-full rounded-md text-primary-foreground"
+                  "w-full rounded-md gap-2 text-primary-foreground"
                 )}
                 disabled={formPending}
               >
+                {!formPending ? (
+                  isSignIn ? (
+                    <RiMailLine className="size-4 shrink-0" aria-hidden />
+                  ) : (
+                    <RiUserAddLine className="size-4 shrink-0" aria-hidden />
+                  )
+                ) : null}
                 {formPending
                   ? isSignIn
                     ? "Signing in…"

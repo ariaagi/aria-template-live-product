@@ -44,6 +44,27 @@ const FALLBACK_CONFIG: BuildConfig = {
   },
 };
 
+function parseBuildConfig(input: {
+  raw: string;
+  sourceLabel: "ARIA_BUILD_CONFIG_JSON" | "aria-build.config.json";
+  onFailure: "fallback" | "try-file";
+}): BuildConfig | null {
+  try {
+    const parsed = JSON.parse(input.raw) as unknown;
+    const result = buildConfigSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    console.error(
+      `[getBuildConfig] Invalid ${input.sourceLabel} (${input.onFailure}):`,
+      result.error.flatten()
+    );
+  } catch (e) {
+    console.error(`[getBuildConfig] Failed to parse ${input.sourceLabel}:`, e);
+  }
+  return null;
+}
+
 function readBuildConfigFile(): BuildConfig | null {
   const path = join(process.cwd(), ARIA_BUILD_FILE);
   if (!existsSync(path)) {
@@ -51,18 +72,13 @@ function readBuildConfigFile(): BuildConfig | null {
   }
   try {
     const raw = readFileSync(path, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    const result = buildConfigSchema.safeParse(parsed);
-    if (!result.success) {
-      console.error(
-        "[getBuildConfig] Invalid aria-build.config.json (using fallback):",
-        result.error.flatten()
-      );
-      return null;
-    }
-    return result.data;
+    return parseBuildConfig({
+      raw,
+      sourceLabel: "aria-build.config.json",
+      onFailure: "fallback",
+    });
   } catch (e) {
-    console.error("[getBuildConfig] Failed to read or parse aria-build.config.json:", e);
+    console.error("[getBuildConfig] Failed to read aria-build.config.json:", e);
     return null;
   }
 }
@@ -79,18 +95,13 @@ function readBuildConfigFile(): BuildConfig | null {
 export function getBuildConfig(): BuildConfig {
   const rawEnv = process.env.ARIA_BUILD_CONFIG_JSON?.trim();
   if (rawEnv) {
-    try {
-      const parsed = JSON.parse(rawEnv) as unknown;
-      const result = buildConfigSchema.safeParse(parsed);
-      if (result.success) {
-        return result.data;
-      }
-      console.error(
-        "[getBuildConfig] Invalid ARIA_BUILD_CONFIG_JSON (trying file):",
-        result.error.flatten()
-      );
-    } catch (e) {
-      console.error("[getBuildConfig] Failed to parse ARIA_BUILD_CONFIG_JSON:", e);
+    const parsedEnv = parseBuildConfig({
+      raw: rawEnv,
+      sourceLabel: "ARIA_BUILD_CONFIG_JSON",
+      onFailure: "try-file",
+    });
+    if (parsedEnv) {
+      return parsedEnv;
     }
   }
 
