@@ -52,8 +52,17 @@ function readBuildConfigFile(): BuildConfig | null {
   try {
     const raw = readFileSync(path, "utf8");
     const parsed = JSON.parse(raw) as unknown;
-    return buildConfigSchema.parse(parsed);
-  } catch {
+    const result = buildConfigSchema.safeParse(parsed);
+    if (!result.success) {
+      console.error(
+        "[getBuildConfig] Invalid aria-build.config.json (using fallback):",
+        result.error.flatten()
+      );
+      return null;
+    }
+    return result.data;
+  } catch (e) {
+    console.error("[getBuildConfig] Failed to read or parse aria-build.config.json:", e);
     return null;
   }
 }
