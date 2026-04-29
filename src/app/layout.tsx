@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import { getBuildConfig } from "@/config/build-config";
 import { AppAuthProvider } from "@/components/providers/app-auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -16,10 +17,49 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "ARIA Live Product Template",
-  description: "Centralized baseline template for ARIA-generated MVP apps.",
-};
+function tryGetMetadataBase(): URL | undefined {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!raw) return undefined;
+  try {
+    return new URL(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+export function generateMetadata(): Metadata {
+  const buildConfig = getBuildConfig();
+  const appName = buildConfig.appName.trim() || "Template App";
+  const appTagline =
+    buildConfig.appTagline.trim() ||
+    "Centralized baseline template ready for ARIA-generated MVP apps.";
+  const logoUrl = buildConfig.branding.logoUrl?.trim();
+  const iconUrl = logoUrl || "/window.svg";
+  const metadataBase = tryGetMetadataBase();
+
+  return {
+    metadataBase,
+    title: appName,
+    description: appTagline,
+    applicationName: appName,
+    openGraph: {
+      type: "website",
+      title: appName,
+      description: appTagline,
+      siteName: appName,
+    },
+    twitter: {
+      card: "summary",
+      title: appName,
+      description: appTagline,
+    },
+    icons: {
+      icon: iconUrl,
+      apple: iconUrl,
+      shortcut: iconUrl,
+    },
+  };
+}
 
 export default function RootLayout({
   children,
