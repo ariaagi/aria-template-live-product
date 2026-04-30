@@ -58,7 +58,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
         break;
       }
-      case "customer.subscription.created":
+      case "customer.subscription.created": {
+        const createdFromEvent = event.data.object as Stripe.Subscription;
+        let subscription = createdFromEvent;
+        try {
+          // Created/update events can arrive out-of-order; read latest Stripe state.
+          subscription = await stripe.subscriptions.retrieve(createdFromEvent.id);
+        } catch {
+          /* fall back to event payload */
+        }
+        await upsertSubscriptionFromStripeWebhookEvent(subscription);
+        break;
+      }
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         await upsertSubscriptionFromStripeWebhookEvent(subscription);
