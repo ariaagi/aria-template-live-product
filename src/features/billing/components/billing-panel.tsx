@@ -105,7 +105,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
   const matchedPlan = useMemo(() => {
     if (!subscription?.stripePriceId) return undefined;
     return plans.find((plan) => plan.stripePriceId === subscription.stripePriceId);
-  }, [plans, subscription?.stripePriceId]);
+  }, [plans, subscription]);
 
   const intervalSuffix =
     matchedPlan?.interval && subscription ? `/${matchedPlan.interval}` : "";

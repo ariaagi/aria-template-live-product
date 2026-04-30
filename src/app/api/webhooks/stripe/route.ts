@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/server/billing/stripe";
 import {
   markSubscriptionDeleted,
   upsertSubscriptionFromStripe,
+  upsertSubscriptionFromStripeWebhookEvent,
 } from "@/lib/server/billing/subscriptions-store";
 
 export const runtime = "nodejs";
@@ -17,19 +18,6 @@ function userIdFromMetadata(
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t || null;
-}
-
-async function upsertFromSubscriptionEvent(
-  subscription: Stripe.Subscription
-): Promise<void> {
-  const userId = userIdFromMetadata(subscription.metadata);
-  if (!userId) return;
-  const customerId =
-    typeof subscription.customer === "string"
-      ? subscription.customer
-      : subscription.customer?.id;
-  if (!customerId) return;
-  await upsertSubscriptionFromStripe(userId, customerId, subscription);
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -73,7 +61,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        await upsertFromSubscriptionEvent(subscription);
+        await upsertSubscriptionFromStripeWebhookEvent(subscription);
         break;
       }
       case "customer.subscription.deleted": {

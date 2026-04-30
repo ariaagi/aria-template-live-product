@@ -1,7 +1,48 @@
 import type Stripe from "stripe";
 
 import { getDbPool } from "@/lib/db";
-import { toDateFromUnix } from "@/lib/server/billing/stripe";
+import { getStripe, toDateFromUnix } from "@/lib/server/billing/stripe";
+
+/**
+ * Merge webhook subscription payloads with a fresh Stripe retrieve so fields like
+ * `cancel_at_period_end` and metadata are complete.
+ *
+ * Some flows (e.g. Billing Portal) deliver updated subscription state while the
+ * webhook `metadata.user_id` key can be missing or empty; we then resolve the user by
+ * `user.stripe_customer_id` after checkout linked the Stripe customer.
+ */
+export async function upsertSubscriptionFromStripeWebhookEvent(
+  subscriptionFromEvent: Stripe.Subscription
+): Promise<void> {
+  const stripe = getStripe();
+  let subscription = subscriptionFromEvent;
+  try {
+    subscription = await stripe.subscriptions.retrieve(subscriptionFromEvent.id);
+  } catch {
+    /* use event object if retrieve fails */
+  }
+
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer?.id;
+  if (!customerId) return;
+
+  let userId = typeof subscription.metadata?.user_id === "string"
+    ? subscription.metadata.user_id.trim()
+    : "";
+  if (!userId) {
+    const pool = getDbPool();
+    const { rows } = await pool.query<{ id: string }>(
+      `SELECT id FROM "user" WHERE stripe_customer_id = $1 LIMIT 1`,
+      [customerId]
+    );
+    userId = rows[0]?.id ?? "";
+  }
+  if (!userId) return;
+
+  await upsertSubscriptionFromStripe(userId, customerId, subscription);
+}
 
 function tierSlugFromSubscription(subscription: Stripe.Subscription): string | null {
   const item = subscription.items.data[0];
