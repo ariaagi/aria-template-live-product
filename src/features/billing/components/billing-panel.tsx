@@ -55,6 +55,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
     return [fallbackPlan];
   }, [buildConfig]);
   const paidPlans = plans.filter((plan) => !plan.isFree && plan.amount > 0);
+  const [selectedTierSlug, setSelectedTierSlug] = useState<string>("");
   const activePlan =
     plans.find((plan) => plan.stripePriceId && plan.stripePriceId === status?.stripePriceId) ??
     plans[0];
@@ -65,6 +66,11 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
     currency: activePlan?.currency ?? buildConfig.pricing.currency,
     maximumFractionDigits: Number.isInteger(activePlan?.amount ?? 0) ? 0 : 2,
   }).format(activePlan?.amount ?? 0);
+  const supportEmail = buildConfig.supportEmail?.trim() || null;
+  const selectedTierSlugForCheckout =
+    selectedTierSlug && paidPlans.some((plan) => plan.tierSlug === selectedTierSlug)
+      ? selectedTierSlug
+      : paidPlans[0]?.tierSlug ?? "";
 
   useEffect(() => {
     void (async () => {
@@ -101,6 +107,21 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs text-muted-foreground">Choose plan</span>
+          <select
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            value={selectedTierSlugForCheckout}
+            onChange={(event) => setSelectedTierSlug(event.target.value)}
+            disabled={pendingCheckout || paidPlans.length <= 1}
+          >
+            {paidPlans.map((plan) => (
+              <option key={plan.tierSlug} value={plan.tierSlug}>
+                {plan.displayName} - {plan.amount} {plan.currency.toUpperCase()}/month
+              </option>
+            ))}
+          </select>
+        </label>
         <Button
           className="justify-between"
           type="button"
@@ -109,7 +130,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
             setPendingCheckout(true);
             setErrorMessage(null);
             try {
-              const targetTierSlug = paidPlans[0]?.tierSlug;
+              const targetTierSlug = selectedTierSlugForCheckout || paidPlans[0]?.tierSlug;
               const data = await postJson("/api/billing/checkout-session", {
                 tierSlug: targetTierSlug,
               });
@@ -176,6 +197,11 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
         </Button>
         {errorMessage ? (
           <p className="text-sm text-rose-500">{errorMessage}</p>
+        ) : null}
+        {supportEmail ? (
+          <p className="text-xs text-muted-foreground">
+            Need help? Contact <a className="underline" href={`mailto:${supportEmail}`}>{supportEmail}</a>
+          </p>
         ) : null}
       </div>
     </section>

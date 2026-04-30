@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { getDbPool } from "@/lib/db";
+import { canUserRunProtectedAction } from "@/lib/server/billing/gating";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
+  if (!(await canUserRunProtectedAction(session.user.id))) {
+    return NextResponse.json(
+      { ok: false, error: "subscription_required_for_action" },
+      { status: 402 }
+    );
+  }
 
   const body = (await request.json().catch(() => null)) as
     | { name?: unknown; email?: unknown; productUpdates?: unknown }
@@ -61,7 +68,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       email: row?.email ?? ignoredEmail ?? "",
       productUpdates: true,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
   }
 }
