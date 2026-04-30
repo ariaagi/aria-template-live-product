@@ -5,6 +5,13 @@ import { CreditCard, ExternalLink, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { BuildConfig, BuildPlanConfig } from "@/types/build-config";
 
 type BillingStatus = {
@@ -109,18 +116,24 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-2">
           <span className="text-xs text-muted-foreground">Choose plan</span>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          <Select
             value={selectedTierSlugForCheckout}
-            onChange={(event) => setSelectedTierSlug(event.target.value)}
+            onValueChange={(value) => setSelectedTierSlug(value ?? "")}
             disabled={pendingCheckout || paidPlans.length <= 1}
           >
-            {paidPlans.map((plan) => (
-              <option key={plan.tierSlug} value={plan.tierSlug}>
-                {plan.displayName} - {plan.amount} {plan.currency.toUpperCase()}/month
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className="h-10 w-full justify-between rounded-md pr-3 text-sm [&_[data-slot=select-value]]:truncate"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start" className="w-[var(--anchor-width)]">
+              {paidPlans.map((plan) => (
+                <SelectItem key={plan.tierSlug} value={plan.tierSlug}>
+                  {plan.displayName} - {plan.amount} {plan.currency.toUpperCase()}/month
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <Button
           className="justify-between"

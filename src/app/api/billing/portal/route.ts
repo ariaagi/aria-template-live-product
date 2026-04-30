@@ -23,11 +23,26 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
   }
 
-  const stripe = getStripe();
-  const origin = getRequestOrigin(request);
-  const portal = await stripe.billingPortal.sessions.create({
-    customer: snapshot.stripeCustomerId,
-    return_url: `${origin}/billing`,
-  });
-  return NextResponse.json({ ok: true, url: portal.url });
+  try {
+    const stripe = getStripe();
+    const origin = getRequestOrigin(request);
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: snapshot.stripeCustomerId,
+      return_url: `${origin}/billing`,
+    });
+    return NextResponse.json({ ok: true, url: portal.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "portal_failed";
+    if (/billing portal|configuration|No configuration provided/i.test(message)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "portal_not_configured",
+          detail: "Stripe Billing Portal is not configured yet for this account.",
+        },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ ok: false, error: "portal_failed" }, { status: 502 });
+  }
 }
