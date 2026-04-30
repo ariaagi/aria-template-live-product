@@ -79,7 +79,24 @@ export function AppShell({
         </aside>
         <div className="flex min-w-0 flex-col">
           <header className="flex min-w-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4">
-            <p className="text-sm text-muted-foreground">{appTagline}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 md:hidden">
+                {logoSrc ? (
+                  <Image
+                    src={logoSrc}
+                    alt=""
+                    aria-hidden
+                    width={22}
+                    height={22}
+                    className="size-[22px] shrink-0 rounded-sm object-cover"
+                  />
+                ) : null}
+                <span className="truncate text-sm font-medium text-foreground">
+                  {appName}
+                </span>
+              </div>
+              <p className="hidden text-sm text-muted-foreground md:block">{appTagline}</p>
+            </div>
             <div className="flex items-center gap-2">
               <div className="md:hidden">
                 <DropdownMenu>
