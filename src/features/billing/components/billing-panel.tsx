@@ -26,9 +26,40 @@ type ApiJson = {
   ok?: boolean;
   url?: string;
   error?: string;
+  detail?: string;
   redirectTo?: string;
   subscription?: BillingStatus;
 };
+
+function portalErrorMessage(data: ApiJson): string {
+  const code = data.error;
+  if (code === "no_customer") {
+    return "Subscribe once with “Change plan” first. After checkout, Manage billing can open the Stripe portal.";
+  }
+  if (code === "unauthorized") {
+    return "Sign in again, then retry.";
+  }
+  if (code === "portal_not_configured") {
+    return (
+      data.detail?.trim() ||
+      "Stripe Customer Portal is not configured for this account (Dashboard → Billing → Customer portal)."
+    );
+  }
+  if (code === "portal_failed") {
+    return "Could not open billing portal. Check Stripe keys and try again.";
+  }
+  return code ?? "portal_failed";
+}
+
+function shouldFollowPortalRedirect(redirectTo: string): boolean {
+  try {
+    const next = new URL(redirectTo);
+    const here = new URL(window.location.href);
+    return next.pathname !== here.pathname || next.search !== here.search;
+  } catch {
+    return true;
+  }
+}
 
 async function postJson(url: string, body?: unknown): Promise<ApiJson> {
   const response = await fetch(url, {
@@ -210,11 +241,15 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
                 window.location.href = data.url;
                 return;
               }
-              if (typeof data?.redirectTo === "string" && data.redirectTo.length > 0) {
+              if (
+                typeof data?.redirectTo === "string" &&
+                data.redirectTo.length > 0 &&
+                shouldFollowPortalRedirect(data.redirectTo)
+              ) {
                 window.location.href = data.redirectTo;
                 return;
               }
-              setErrorMessage(data?.error ?? "portal_failed");
+              setErrorMessage(portalErrorMessage(data));
             } catch {
               setErrorMessage("portal_failed");
             } finally {
