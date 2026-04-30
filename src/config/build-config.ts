@@ -2,21 +2,36 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { z } from "zod";
-import type { BuildConfig } from "@/types/build-config";
+import type { BuildConfig, BuildPlanConfig } from "@/types/build-config";
 
 const ARIA_BUILD_FILE = "aria-build.config.json";
+
+const legacyPricingSchema = z.object({
+  planName: z.string().min(2).optional(),
+  amount: z.number().nonnegative(),
+  currency: z.string().min(3).max(3).transform((value) => value.toUpperCase()),
+  interval: z.enum(["month", "year"]).optional(),
+});
+
+const buildPlanSchema = z.object({
+  tierSlug: z.string().min(1),
+  displayName: z.string().min(1),
+  amount: z.number().nonnegative(),
+  currency: z.string().min(3).max(3).transform((value) => value.toUpperCase()),
+  interval: z.literal("month"),
+  isFree: z.boolean(),
+  stripePriceId: z.string().min(1).optional(),
+});
 
 const buildConfigSchema = z.object({
   appName: z.string().min(2),
   appTagline: z.string().min(6),
   ideaId: z.string().min(6),
-  monetizationMode: z.enum(["product", "subscription"]),
-  pricing: z.object({
-    planName: z.string().min(2).optional(),
-    amount: z.number().nonnegative(),
-    currency: z.string().min(3).max(3).transform((value) => value.toUpperCase()),
-    interval: z.enum(["month", "year"]).optional(),
-  }),
+  monetizationMode: z.enum(["product", "subscription", "has_free_tier", "paid_only"]),
+  supportEmail: z.string().email().optional(),
+  plans: z.array(buildPlanSchema).max(5).optional(),
+  pricing: legacyPricingSchema,
+  gating: z.record(z.string(), z.unknown()).optional(),
   integrations: z.array(z.enum(["neon", "stripe", "resend", "notion", "github", "vercel"])),
   branding: z.object({
     primaryColor: z.string().min(4),
@@ -111,4 +126,25 @@ export function getBuildConfig(): BuildConfig {
   }
 
   return FALLBACK_CONFIG;
+}
+
+/**
+ * Unified plan reader for legacy + v2 build contracts.
+ */
+export function getBillingPlans(config: BuildConfig): BuildPlanConfig[] {
+  if (config.plans && config.plans.length > 0) {
+    return config.plans;
+  }
+  const legacyLabel = config.pricing.planName?.trim() || "Starter";
+  return [
+    {
+      tierSlug: "starter",
+      displayName: legacyLabel,
+      amount: config.pricing.amount,
+      currency: config.pricing.currency,
+      interval: "month",
+      isFree: config.pricing.amount <= 0,
+      stripePriceId: undefined,
+    },
+  ];
 }

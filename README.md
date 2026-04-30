@@ -48,7 +48,10 @@ Optional / feature-specific:
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `NEXT_PUBLIC_ARIA_API_BASE_URL`
-- `ARIA_BUILD_CONFIG_JSON` (optional legacy override; prefer **`aria-build.config.json`** in the repo)
+- `ARIA_BUILD_CONFIG_JSON` (primary runtime source set by ARIA on Vercel)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (only if client Stripe.js is needed)
 - `E2E_BYPASS_AUTH` (test-only)
 
 ### Google OAuth Redirect URI
@@ -63,14 +66,14 @@ If Google OAuth is enabled, configure:
 
 Resolution order in **`getBuildConfig()`**:
 
-1. **`aria-build.config.json`** on disk (repo root)
-2. **`ARIA_BUILD_CONFIG_JSON`** (optional override)
+1. **`ARIA_BUILD_CONFIG_JSON`** (when set by ARIA at deploy time)
+2. **`aria-build.config.json`** on disk (repo root)
 3. Built-in defaults
 
 Reference files:
 
 - `aria-build.config.json` — injected / committed by ARIA (source of truth for deploys)
-- `src/config/build-config.ts` — loads config (file → env → defaults)
+- `src/config/build-config.ts` — loads config (env → file → defaults)
 - `src/types/build-config.ts` — TypeScript types
 
 ## Quality Checks
