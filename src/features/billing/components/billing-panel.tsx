@@ -19,6 +19,10 @@ type BillingStatus = {
   tierSlug: string | null;
   stripePriceId: string | null;
   cancelAtPeriodEnd: boolean;
+  cancelAt: string | null;
+  canceledAt: string | null;
+  isScheduledToCancel: boolean;
+  willAutoRenew: boolean;
   currentPeriodEnd: string | null;
 } | null;
 
@@ -133,6 +137,16 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
         : isSubscriptionBillingActive(subscription)
           ? "Active"
           : "Not Active";
+  const renewalHint = useMemo(() => {
+    if (!subscription || subscription === undefined) return null;
+    if (subscription.willAutoRenew) {
+      return "Auto-renew is on";
+    }
+    if (subscription.isScheduledToCancel) {
+      return "Scheduled to end at period end";
+    }
+    return null;
+  }, [subscription]);
   const supportEmail = buildConfig.supportEmail?.trim() || null;
   const selectedTierSlugForCheckout =
     selectedTierSlug && paidPlans.some((plan) => plan.tierSlug === selectedTierSlug)
@@ -204,6 +218,9 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
             >
               {statusBadgeLabel}
             </Badge>
+            {renewalHint ? (
+              <p className="w-full text-xs text-muted-foreground sm:w-auto">{renewalHint}</p>
+            ) : null}
           </div>
         </CardHeader>
       </Card>

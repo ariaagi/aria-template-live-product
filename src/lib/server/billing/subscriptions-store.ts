@@ -85,6 +85,8 @@ export async function upsertSubscriptionFromStripe(
   const stripePriceId = item?.price?.id ?? null;
   const tierSlug = tierSlugFromSubscription(subscription);
   const currentPeriodEnd = toDateFromUnix(item?.current_period_end ?? null);
+  const cancelAt = toDateFromUnix(subscription.cancel_at ?? null);
+  const canceledAt = toDateFromUnix(subscription.canceled_at ?? null);
 
   await pool.query(
     `UPDATE "user"
@@ -103,10 +105,12 @@ export async function upsertSubscriptionFromStripe(
       status,
       current_period_end,
       cancel_at_period_end,
+      cancel_at,
+      canceled_at,
       created_at,
       updated_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, now(), now()
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()
     )
     ON CONFLICT (stripe_subscription_id) DO UPDATE SET
       user_id = EXCLUDED.user_id,
@@ -115,6 +119,8 @@ export async function upsertSubscriptionFromStripe(
       status = EXCLUDED.status,
       current_period_end = EXCLUDED.current_period_end,
       cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+      cancel_at = EXCLUDED.cancel_at,
+      canceled_at = EXCLUDED.canceled_at,
       updated_at = now()`,
     [
       subscription.id,
@@ -125,17 +131,25 @@ export async function upsertSubscriptionFromStripe(
       subscription.status,
       currentPeriodEnd,
       subscription.cancel_at_period_end,
+      cancelAt,
+      canceledAt,
     ]
   );
 }
 
-export async function markSubscriptionDeleted(subscriptionId: string): Promise<void> {
+export async function markSubscriptionDeleted(
+  subscriptionId: string,
+  canceledAt: Date | null = new Date()
+): Promise<void> {
   const pool = getDbPool();
   await pool.query(
     `UPDATE "subscriptions"
-     SET status = 'canceled', updated_at = now()
+     SET status = 'canceled',
+         cancel_at_period_end = false,
+         canceled_at = COALESCE($2, canceled_at),
+         updated_at = now()
      WHERE stripe_subscription_id = $1`,
-    [subscriptionId]
+    [subscriptionId, canceledAt]
   );
 }
 
@@ -146,6 +160,10 @@ export async function getUserBillingSnapshot(userId: string): Promise<{
     tierSlug: string | null;
     stripePriceId: string | null;
     cancelAtPeriodEnd: boolean;
+    cancelAt: string | null;
+    canceledAt: string | null;
+    isScheduledToCancel: boolean;
+    willAutoRenew: boolean;
     currentPeriodEnd: string | null;
   } | null;
 }> {
@@ -159,9 +177,11 @@ export async function getUserBillingSnapshot(userId: string): Promise<{
     tier_slug: string | null;
     stripe_price_id: string | null;
     cancel_at_period_end: boolean;
+    cancel_at: Date | null;
+    canceled_at: Date | null;
     current_period_end: Date | null;
   }>(
-    `SELECT status, tier_slug, stripe_price_id, cancel_at_period_end, current_period_end
+    `SELECT status, tier_slug, stripe_price_id, cancel_at_period_end, cancel_at, canceled_at, current_period_end
      FROM "subscriptions"
      WHERE user_id = $1
      ORDER BY updated_at DESC
@@ -172,15 +192,27 @@ export async function getUserBillingSnapshot(userId: string): Promise<{
   return {
     stripeCustomerId: userRows[0]?.stripe_customer_id ?? null,
     subscription: sub
-      ? {
-          status: sub.status,
-          tierSlug: sub.tier_slug,
-          stripePriceId: sub.stripe_price_id,
-          cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
-          currentPeriodEnd: sub.current_period_end
-            ? sub.current_period_end.toISOString()
-            : null,
-        }
+      ? (() => {
+          const status = sub.status?.trim().toLowerCase();
+          const cancelAtIso = sub.cancel_at ? sub.cancel_at.toISOString() : null;
+          const canceledAtIso = sub.canceled_at ? sub.canceled_at.toISOString() : null;
+          const isScheduledToCancel = Boolean(sub.cancel_at_period_end) || Boolean(cancelAtIso);
+          const willAutoRenew =
+            (status === "active" || status === "trialing") && !isScheduledToCancel;
+          return {
+            status: sub.status,
+            tierSlug: sub.tier_slug,
+            stripePriceId: sub.stripe_price_id,
+            cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+            cancelAt: cancelAtIso,
+            canceledAt: canceledAtIso,
+            isScheduledToCancel,
+            willAutoRenew,
+            currentPeriodEnd: sub.current_period_end
+              ? sub.current_period_end.toISOString()
+              : null,
+          };
+        })()
       : null,
   };
 }

@@ -77,7 +77,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        await markSubscriptionDeleted(subscription.id);
+        const canceledAt = subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000)
+          : new Date();
+        await markSubscriptionDeleted(subscription.id, canceledAt);
         break;
       }
       case "invoice.paid":
