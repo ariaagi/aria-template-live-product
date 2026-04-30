@@ -4,34 +4,27 @@ import { getDbPool } from "@/lib/db";
 import { getStripe, toDateFromUnix } from "@/lib/server/billing/stripe";
 
 /**
- * Merge webhook subscription payloads with a fresh Stripe retrieve so fields like
- * `cancel_at_period_end` and metadata are complete.
+ * Persist subscription state from webhook events.
  *
- * Some flows (e.g. Billing Portal) deliver updated subscription state while the
- * webhook `metadata.user_id` key can be missing or empty; we then resolve the user by
- * `user.stripe_customer_id` after checkout linked the Stripe customer.
+ * We treat the event payload as source-of-truth for mutable fields (especially
+ * `cancel_at_period_end`) to avoid race windows where an immediate retrieve can
+ * briefly return older state. A follow-up retrieve is only used as fallback to
+ * resolve user/customer identity when webhook metadata is incomplete.
  */
 export async function upsertSubscriptionFromStripeWebhookEvent(
   subscriptionFromEvent: Stripe.Subscription
 ): Promise<void> {
-  const stripe = getStripe();
-  let subscription = subscriptionFromEvent;
-  try {
-    subscription = await stripe.subscriptions.retrieve(subscriptionFromEvent.id);
-  } catch {
-    /* use event object if retrieve fails */
-  }
+  const subscription = subscriptionFromEvent;
 
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
       : subscription.customer?.id;
-  if (!customerId) return;
 
   let userId = typeof subscription.metadata?.user_id === "string"
     ? subscription.metadata.user_id.trim()
     : "";
-  if (!userId) {
+  if (!userId && customerId) {
     const pool = getDbPool();
     const { rows } = await pool.query<{ id: string }>(
       `SELECT id FROM "user" WHERE stripe_customer_id = $1 LIMIT 1`,
@@ -39,9 +32,38 @@ export async function upsertSubscriptionFromStripeWebhookEvent(
     );
     userId = rows[0]?.id ?? "";
   }
-  if (!userId) return;
 
-  await upsertSubscriptionFromStripe(userId, customerId, subscription);
+  let fallbackCustomerId = customerId ?? "";
+  if (!userId || !fallbackCustomerId) {
+    const stripe = getStripe();
+    try {
+      const retrieved = await stripe.subscriptions.retrieve(subscriptionFromEvent.id);
+      if (!fallbackCustomerId) {
+        fallbackCustomerId =
+          typeof retrieved.customer === "string"
+            ? retrieved.customer
+            : retrieved.customer?.id ?? "";
+      }
+      if (!userId) {
+        const metadataUserId = retrieved.metadata?.user_id?.trim() ?? "";
+        if (metadataUserId) {
+          userId = metadataUserId;
+        } else if (fallbackCustomerId) {
+          const pool = getDbPool();
+          const { rows } = await pool.query<{ id: string }>(
+            `SELECT id FROM "user" WHERE stripe_customer_id = $1 LIMIT 1`,
+            [fallbackCustomerId]
+          );
+          userId = rows[0]?.id ?? "";
+        }
+      }
+    } catch {
+      /* keep best-effort values from event */
+    }
+  }
+  if (!userId || !fallbackCustomerId) return;
+
+  await upsertSubscriptionFromStripe(userId, fallbackCustomerId, subscription);
 }
 
 function tierSlugFromSubscription(subscription: Stripe.Subscription): string | null {
