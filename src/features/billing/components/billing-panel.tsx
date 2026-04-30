@@ -153,6 +153,11 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
       ? selectedTierSlug
       : paidPlans[0]?.tierSlug ?? "";
 
+  const selectedPlanForCheckout = useMemo(() => {
+    const slug = selectedTierSlugForCheckout;
+    return paidPlans.find((plan) => plan.tierSlug === slug) ?? paidPlans[0];
+  }, [paidPlans, selectedTierSlugForCheckout]);
+
   useEffect(() => {
     void (async () => {
       const response = await fetch("/api/billing/status", {
@@ -240,7 +245,11 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
               className="min-w-0 w-full flex-1 justify-between rounded-lg pr-3 text-sm [&_[data-slot=select-value]]:truncate"
               aria-label="Choose plan"
             >
-              <SelectValue />
+              <SelectValue>
+                {selectedPlanForCheckout
+                  ? `${selectedPlanForCheckout.displayName} - ${selectedPlanForCheckout.amount} ${selectedPlanForCheckout.currency.toUpperCase()}/month`
+                  : "Choose plan"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent
               side="bottom"
