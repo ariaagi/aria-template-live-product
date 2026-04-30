@@ -77,8 +77,8 @@ export function AppShell({
             })}
           </nav>
         </aside>
-        <div className="flex flex-col">
-          <header className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 flex-col">
+          <header className="flex min-w-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4">
             <p className="text-sm text-muted-foreground">{appTagline}</p>
             <div className="flex items-center gap-2">
               <div className="md:hidden">
@@ -117,7 +117,7 @@ export function AppShell({
               </div>
             </div>
           </header>
-          <main className="flex-1 p-4 sm:p-6">{children}</main>
+          <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
         </div>
       </div>
     </div>

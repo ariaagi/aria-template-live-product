@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { CreditCard, ExternalLink, Sparkles } from "lucide-react";
@@ -91,15 +91,17 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
   }, []);
 
   return (
-    <section className="space-y-6">
+    <section className="min-w-0 max-w-full space-y-6">
       <header className="space-y-1">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
+            Billing
+          </h1>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className="shrink-0"
+            className="-mr-2 ml-auto shrink-0 sm:-mr-0"
             onClick={async () => {
               const response = await fetch("/api/billing/status", {
                 credentials: "include",
@@ -117,23 +119,29 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
         </p>
       </header>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Current plan
+      <Card className="min-w-0">
+        <CardHeader className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex shrink-0 items-center gap-2 text-balance">
+            <CreditCard className="size-5 shrink-0" />
+            <span>Current plan</span>
           </CardTitle>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto sm:justify-end">
             <p className="font-medium">{planLabel}</p>
-            <p className="text-sm text-muted-foreground">{`${amount}${intervalSuffix}`}</p>
-            <Badge variant="secondary">{status?.status ?? "Unknown"}</Badge>
+            <p className="text-sm whitespace-nowrap text-muted-foreground">
+              {`${amount}${intervalSuffix}`}
+            </p>
+            <Badge variant="secondary" className="shrink-0">
+              {status?.status ?? "Unknown"}
+            </Badge>
           </div>
         </CardHeader>
       </Card>
 
-      <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-3 overflow-x-auto px-1 py-0.5 [scrollbar-width:thin]">
-        <div className="flex min-h-10 min-w-[min(100%,14rem)] flex-1 shrink-0 basis-[min(14rem,calc(100%-15rem))] items-center gap-2">
-          <span className="text-xs whitespace-nowrap text-muted-foreground">Choose plan</span>
+      <div className="flex min-w-0 w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
+        <div className="flex min-h-10 min-w-0 w-full shrink-0 items-center gap-2 lg:flex-1">
+          <span className="pt-px text-xs leading-none whitespace-nowrap text-muted-foreground">
+            Choose plan
+          </span>
           <Select
             value={selectedTierSlugForCheckout}
             onValueChange={(value) => setSelectedTierSlug(value ?? "")}
@@ -141,7 +149,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
           >
             <SelectTrigger
               size="lg"
-              className="min-w-0 flex-1 justify-between rounded-lg pr-3 text-sm [&_[data-slot=select-value]]:truncate"
+              className="min-w-0 w-full flex-1 justify-between rounded-lg pr-3 text-sm [&_[data-slot=select-value]]:truncate"
               aria-label="Choose plan"
             >
               <SelectValue />
@@ -162,7 +170,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
           </Select>
         </div>
         <Button
-          className="h-10 min-w-[10.5rem] shrink-0 justify-between"
+          className="h-10 w-full shrink-0 justify-between lg:w-auto lg:min-w-[10.5rem]"
           type="button"
           disabled={pendingCheckout || paidPlans.length < 1}
           onClick={async () => {
@@ -189,7 +197,7 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
           <Sparkles className="h-4 w-4" />
         </Button>
         <Button
-          className="h-10 min-w-[10.5rem] shrink-0 justify-between"
+          className="h-10 w-full shrink-0 justify-between lg:w-auto lg:min-w-[10.5rem]"
           type="button"
           variant="outline"
           disabled={pendingPortal}
