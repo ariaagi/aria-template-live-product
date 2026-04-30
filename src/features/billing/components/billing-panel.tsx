@@ -22,6 +22,13 @@ type BillingStatus = {
   currentPeriodEnd: string | null;
 } | null;
 
+const STRIPE_SUBSCRIPTION_ACTIVE = new Set(["active", "trialing"]);
+
+function isSubscriptionBillingActive(sub: NonNullable<BillingStatus>): boolean {
+  const s = sub.status?.trim().toLowerCase() ?? "";
+  return STRIPE_SUBSCRIPTION_ACTIVE.has(s);
+}
+
 type ApiJson = {
   ok?: boolean;
   url?: string;
@@ -75,7 +82,8 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
   const [pendingCheckout, setPendingCheckout] = useState(false);
   const [pendingPortal, setPendingPortal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [status, setStatus] = useState<BillingStatus>(null);
+  /** `undefined` = billing API not loaded yet; `null` = loaded, no subscription row */
+  const [subscription, setSubscription] = useState<BillingStatus | undefined>(undefined);
   const plans = useMemo(() => {
     if (buildConfig.plans && buildConfig.plans.length > 0) {
       return buildConfig.plans;
@@ -94,16 +102,37 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
   }, [buildConfig]);
   const paidPlans = plans.filter((plan) => !plan.isFree && plan.amount > 0);
   const [selectedTierSlug, setSelectedTierSlug] = useState<string>("");
-  const activePlan =
-    plans.find((plan) => plan.stripePriceId && plan.stripePriceId === status?.stripePriceId) ??
-    plans[0];
-  const intervalSuffix = activePlan?.interval ? `/${activePlan.interval}` : "";
-  const planLabel = activePlan?.displayName?.trim() || "Starter";
-  const amount = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: activePlan?.currency ?? buildConfig.pricing.currency,
-    maximumFractionDigits: Number.isInteger(activePlan?.amount ?? 0) ? 0 : 2,
-  }).format(activePlan?.amount ?? 0);
+  const matchedPlan = useMemo(() => {
+    if (!subscription?.stripePriceId) return undefined;
+    return plans.find((plan) => plan.stripePriceId === subscription.stripePriceId);
+  }, [plans, subscription?.stripePriceId]);
+
+  const intervalSuffix =
+    matchedPlan?.interval && subscription ? `/${matchedPlan.interval}` : "";
+  const planLabel =
+    subscription === undefined
+      ? "Loading…"
+      : subscription === null
+        ? "No plan applied"
+        : matchedPlan?.displayName?.trim() ||
+          subscription.tierSlug?.trim() ||
+          "Current subscription";
+  const amount =
+    matchedPlan && subscription
+      ? new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: matchedPlan.currency ?? buildConfig.pricing.currency,
+          maximumFractionDigits: Number.isInteger(matchedPlan.amount) ? 0 : 2,
+        }).format(matchedPlan.amount)
+      : null;
+  const statusBadgeLabel =
+    subscription === undefined
+      ? "…"
+      : subscription === null
+        ? "Not Active"
+        : isSubscriptionBillingActive(subscription)
+          ? "Active"
+          : "Not Active";
   const supportEmail = buildConfig.supportEmail?.trim() || null;
   const selectedTierSlugForCheckout =
     selectedTierSlug && paidPlans.some((plan) => plan.tierSlug === selectedTierSlug)
@@ -115,9 +144,12 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
       const response = await fetch("/api/billing/status", {
         credentials: "include",
       });
-      const data = await response.json();
-      if (!data?.ok) return;
-      setStatus(data.subscription ?? null);
+      const data = (await response.json()) as { ok?: boolean; subscription?: BillingStatus };
+      if (response.ok && data?.ok) {
+        setSubscription(data.subscription ?? null);
+      } else {
+        setSubscription(null);
+      }
     })();
   }, []);
 
@@ -137,9 +169,12 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
               const response = await fetch("/api/billing/status", {
                 credentials: "include",
               });
-              const data = await response.json();
-              if (!data?.ok) return;
-              setStatus(data.subscription ?? null);
+              const data = (await response.json()) as { ok?: boolean; subscription?: BillingStatus };
+              if (response.ok && data?.ok) {
+                setSubscription(data.subscription ?? null);
+              } else {
+                setSubscription(null);
+              }
             }}
           >
             Refresh billing status
@@ -158,11 +193,16 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
           </CardTitle>
           <div className="flex min-w-0 w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto sm:justify-end">
             <p className="font-medium">{planLabel}</p>
-            <p className="text-sm whitespace-nowrap text-muted-foreground">
-              {`${amount}${intervalSuffix}`}
-            </p>
-            <Badge variant="secondary" className="shrink-0">
-              {status?.status ?? "Unknown"}
+            {amount !== null && subscription ? (
+              <p className="text-sm whitespace-nowrap text-muted-foreground">
+                {`${amount}${intervalSuffix}`}
+              </p>
+            ) : null}
+            <Badge
+              variant={statusBadgeLabel === "Active" ? "default" : "secondary"}
+              className="shrink-0"
+            >
+              {statusBadgeLabel}
             </Badge>
           </div>
         </CardHeader>
