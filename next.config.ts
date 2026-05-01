@@ -6,6 +6,16 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": ["./aria-build.config.json"],
   },
+  /**
+   * Legacy `/dashboard` route removed — shell is `/home`. Keep redirects so bookmarks and
+   * external links never 404.
+   */
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/home", permanent: true },
+      { source: "/dashboard/:path*", destination: "/home", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
