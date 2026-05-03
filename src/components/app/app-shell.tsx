@@ -2,11 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, type ComponentType } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, LayoutGrid, Menu, Settings } from "lucide-react";
+import {
+  BarChart,
+  Bell,
+  Book,
+  Bookmark,
+  Briefcase,
+  Calendar,
+  CreditCard,
+  Dumbbell,
+  FileText,
+  Folder,
+  Globe,
+  GraduationCap,
+  Heart,
+  Image as ImageIcon,
+  LayoutGrid,
+  List,
+  Map,
+  Menu,
+  MessageSquare,
+  Music,
+  Package,
+  Settings,
+  ShoppingBag,
+  Star,
+  TrendingUp,
+  Trophy,
+  Users,
+  Video,
+  Wallet,
+} from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { extraSidebarNavItems, type SidebarIconName } from "@/config/sidebar-nav.config";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +48,69 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { href: "/home", label: "Home", icon: LayoutGrid },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+type IconCmp = ComponentType<{ className?: string }>;
+
+/**
+ * Stable map of `SidebarIconName` (string slug from sidebar-nav.config.ts) → lucide React component.
+ * Using a string slug in the config (instead of importing icons there) keeps the config a pure
+ * data file Claude can write safely without learning lucide's tree-shaken import paths.
+ */
+const ICON_MAP: Record<SidebarIconName, IconCmp> = {
+  "layout-grid": LayoutGrid,
+  list: List,
+  folder: Folder,
+  calendar: Calendar,
+  users: Users,
+  "shopping-bag": ShoppingBag,
+  package: Package,
+  "file-text": FileText,
+  image: ImageIcon,
+  music: Music,
+  video: Video,
+  "message-square": MessageSquare,
+  bell: Bell,
+  star: Star,
+  heart: Heart,
+  bookmark: Bookmark,
+  trophy: Trophy,
+  dumbbell: Dumbbell,
+  book: Book,
+  "graduation-cap": GraduationCap,
+  briefcase: Briefcase,
+  wallet: Wallet,
+  "trending-up": TrendingUp,
+  "bar-chart": BarChart,
+  globe: Globe,
+  map: Map,
+};
+
+type ResolvedNavItem = { href: string; label: string; icon: IconCmp };
+
+const HOME_ITEM: ResolvedNavItem = { href: "/home", label: "Home", icon: LayoutGrid };
+const BILLING_ITEM: ResolvedNavItem = { href: "/billing", label: "Billing", icon: CreditCard };
+const SETTINGS_ITEM: ResolvedNavItem = { href: "/settings", label: "Settings", icon: Settings };
+
+/**
+ * Merges template baseline (Home / Billing / Settings) with extras from
+ * sidebar-nav.config.ts. Extras render between Home and Billing so the IA reads
+ * Home → user features → Billing → Settings. Duplicate hrefs are dropped silently
+ * (template owns Home/Billing/Settings hrefs).
+ */
+function buildNavItems(): ResolvedNavItem[] {
+  const baseHrefs = new Set([HOME_ITEM.href, BILLING_ITEM.href, SETTINGS_ITEM.href]);
+  const seen = new Set<string>(baseHrefs);
+  const extras: ResolvedNavItem[] = [];
+  for (const item of extraSidebarNavItems) {
+    const href = item.href.trim();
+    if (!href.startsWith("/") || seen.has(href)) continue;
+    seen.add(href);
+    const icon = item.iconName ? (ICON_MAP[item.iconName] ?? Folder) : Folder;
+    extras.push({ href, label: item.label, icon });
+  }
+  return [HOME_ITEM, ...extras, BILLING_ITEM, SETTINGS_ITEM];
+}
+
+const NAV_ITEMS = buildNavItems();
 
 type AppShellProps = PropsWithChildren;
 type AppShellBrandingProps = {
