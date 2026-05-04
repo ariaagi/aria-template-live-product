@@ -46,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { pickActiveNavHref } from "@/lib/nav/is-active-nav-item";
 import { cn } from "@/lib/utils";
 
 type IconCmp = ComponentType<{ className?: string }>;
@@ -125,8 +126,15 @@ export function AppShell({
   appTagline,
   logoSrc,
 }: AppShellProps & AppShellBrandingProps) {
-  const currentPath = usePathname();
+  const currentPath = usePathname() ?? "/";
   const router = useRouter();
+  // Resolve the single active sidebar item up-front so the desktop sidebar
+  // and the mobile dropdown agree, and so children's hrefs (e.g. `/home/kits`)
+  // beat their parent (`/home`) — see is-active-nav-item.ts for the rule.
+  const activeHref = pickActiveNavHref(
+    currentPath,
+    NAV_ITEMS.map((item) => item.href)
+  );
 
   return (
     <div className="min-h-svh bg-background">
@@ -148,12 +156,13 @@ export function AppShell({
           <nav className="space-y-1">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPath.startsWith(item.href);
+              const isActive = item.href === activeHref;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                     isActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
@@ -199,10 +208,11 @@ export function AppShell({
                   <DropdownMenuContent align="end" className="w-44">
                     {NAV_ITEMS.map((item) => {
                       const Icon = item.icon;
-                      const isActive = currentPath.startsWith(item.href);
+                      const isActive = item.href === activeHref;
                       return (
                         <DropdownMenuItem
                           key={item.href}
+                          aria-current={isActive ? "page" : undefined}
                           className={cn("cursor-pointer", isActive && "bg-muted")}
                           onClick={() => router.push(item.href)}
                         >

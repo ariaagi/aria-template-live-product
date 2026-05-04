@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { type PropsWithChildren } from "react";
 
 import { extraSettingsTabs } from "@/config/settings-tabs.config";
+import { pickActiveNavHref } from "@/lib/nav/is-active-nav-item";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,14 +23,20 @@ import { cn } from "@/lib/utils";
 export function SettingsShell({ children }: PropsWithChildren) {
   const pathname = usePathname() ?? "/settings";
 
-  const tabs = [
-    { href: "/settings", label: "Profile", isActive: pathname === "/settings" },
+  const baseTabs = [
+    { href: "/settings", label: "Profile" },
     ...extraSettingsTabs.map((tab) => {
       const slug = tab.slug.replace(/^\/+|\/+$/g, "");
-      const href = `/settings/${slug}`;
-      return { href, label: tab.label, isActive: pathname.startsWith(href) };
+      return { href: `/settings/${slug}`, label: tab.label };
     }),
   ];
+  // "Longest match wins" so /settings/api-keys lights up that tab (not Profile),
+  // and so /settings/api would not light up /settings/api-keys (boundary-aware).
+  const activeHref = pickActiveNavHref(
+    pathname,
+    baseTabs.map((tab) => tab.href)
+  );
+  const tabs = baseTabs.map((tab) => ({ ...tab, isActive: tab.href === activeHref }));
 
   const showTabStrip = tabs.length > 1;
 

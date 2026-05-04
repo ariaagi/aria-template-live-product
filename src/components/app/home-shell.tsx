@@ -6,6 +6,7 @@ import { PropsWithChildren } from "react";
 
 import { Button } from "@/components/ui/button";
 import { homeNavConfig } from "@/config/home-nav.config";
+import { pickActiveNavHref } from "@/lib/nav/is-active-nav-item";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,18 +21,23 @@ import { cn } from "@/lib/utils";
  *   - Header actions render with the SAME visibility regardless of page state (empty/populated).
  *     Empty-state illustrations on a child page can re-render the same CTA at a larger size, but
  *     the header CTA is always present.
- *   - Sub-nav highlights the active route via `usePathname().startsWith(href)` (or exact match
- *     for `/home`).
+ *   - Sub-nav highlights the active route via `pickActiveNavHref` (longest-match-wins,
+ *     boundary-aware) so a child route lights up exactly one tab — never both the
+ *     section parent and its child.
  *   - The shell is fully optional: when both arrays are empty, only `children` renders — the
  *     bare template behaves identically to before.
  */
 export function HomeShell({ children }: PropsWithChildren) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/home";
   const { homeHeaderActions, homeSubNav } = homeNavConfig;
 
   const hasHeader = homeHeaderActions.length > 0;
   const hasSubNav = homeSubNav.length > 0;
   const showShell = hasHeader || hasSubNav;
+  const activeSubNavHref = pickActiveNavHref(
+    pathname,
+    homeSubNav.map((item) => item.href)
+  );
 
   if (!showShell) {
     return <>{children}</>;
@@ -63,14 +69,12 @@ export function HomeShell({ children }: PropsWithChildren) {
           className="flex flex-wrap items-center gap-1 border-b text-sm"
         >
           {homeSubNav.map((item) => {
-            const isActive =
-              item.href === "/home"
-                ? pathname === "/home"
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = item.href === activeSubNavHref;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "-mb-px border-b-2 px-3 py-2 text-muted-foreground transition-colors hover:text-foreground",
                   isActive
