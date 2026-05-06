@@ -9,6 +9,11 @@
  *
  * Conventions:
  *   - `href` MUST start with `/` and match an actual route in `src/app/(app)/`.
+ *   - `href` MUST be a STATIC path. Hrefs containing `[bracket]` segments (e.g. `[id]`,
+ *     `[slug]`) are FORBIDDEN — the sidebar renders on every page and has no dynamic id
+ *     in scope, so a literal `[id]` href navigates to that path and 404s at runtime.
+ *     `app-shell.tsx` silently drops any dynamic-href entry as a safety net. Link to
+ *     dynamic routes from the parent detail page using a template literal instead.
  *   - `iconName` is one of the supported lucide-react icons (see ICON_MAP in app-shell.tsx).
  *     Omit to use the default folder icon.
  *   - 0–6 items recommended. The template's responsive nav is tuned for that range.

@@ -12,12 +12,20 @@
  * typing the URL. This file fixes that by giving Claude an additive hook into nav.
  *
  * Contract for ARIA codegen:
- *   - Add ONE entry in `homeHeaderActions` per `create`-class route in the spec's `navigation`
- *     block (label like "+ New Trust Page"). These persist regardless of data state.
- *   - Add ONE entry in `homeSubNav` per `list`-class route under `/home/...` so users can move
- *     between child list pages from the home shell.
+ *   - Add ONE entry in `homeHeaderActions` per STATIC `create`-class route in the spec's
+ *     `navigation` block (label like "+ New Trust Page"). These persist regardless of data
+ *     state.
+ *   - Add ONE entry in `homeSubNav` per STATIC `list`-class route under `/home/...` so users
+ *     can move between child list pages from the home shell.
  *   - Routes referenced here MUST exist in `primaryAppRoutes`.
  *   - Empty arrays are valid (template default).
+ *
+ *   **HREDS MUST BE STATIC**: hrefs containing `[bracket]` segments (e.g. `[id]`, `[slug]`)
+ *   are FORBIDDEN. The /home shell has no dynamic id in scope, so `<Link href="/home/boards/[id]/listings">`
+ *   navigates to that literal path and 404s at runtime (`useParams().id === "[id]"`). Link to
+ *   child-of-dynamic routes from the parent detail page using a template literal:
+ *   `<Link href={\`/home/boards/${board.id}/listings\`}>...</Link>`. The template's
+ *   `home-shell.tsx` will silently drop any dynamic-href entry as a runtime safety net.
  */
 
 export type HomeHeaderAction = {

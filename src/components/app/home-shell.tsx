@@ -26,10 +26,47 @@ import { cn } from "@/lib/utils";
  *     section parent and its child.
  *   - The shell is fully optional: when both arrays are empty, only `children` renders — the
  *     bare template behaves identically to before.
+ *   - **Defense in depth**: any nav entry whose `href` contains a `[bracket]` segment (e.g.
+ *     `/home/boards/[id]/listings`) is silently dropped. The /home shell has no dynamic id in
+ *     scope, so a literal `[id]` href would 404 at runtime (`useParams().id === "[id]"`). The
+ *     ARIA spec schema, normalizer, and source audits already prevent this pre-deploy; this
+ *     filter is the runtime safety net for already-shipped MVPs and any future regression.
  */
+
+/** True iff `href` contains no Next.js dynamic-segment placeholders. */
+function isStaticHref(href: string): boolean {
+  return !/\[[^/\]]+\]/.test(href);
+}
+
 export function HomeShell({ children }: PropsWithChildren) {
   const pathname = usePathname() ?? "/home";
-  const { homeHeaderActions, homeSubNav } = homeNavConfig;
+
+  const homeHeaderActions = homeNavConfig.homeHeaderActions.filter((a) => {
+    if (!isStaticHref(a.href)) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[home-shell] dropping homeHeaderAction with dynamic href: "${a.href}". ` +
+            `Link to it from the parent detail page using a template literal instead.`,
+        );
+      }
+      return false;
+    }
+    return true;
+  });
+  const homeSubNav = homeNavConfig.homeSubNav.filter((i) => {
+    if (!isStaticHref(i.href)) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[home-shell] dropping homeSubNav item with dynamic href: "${i.href}". ` +
+            `Link to it from the parent detail page using a template literal instead.`,
+        );
+      }
+      return false;
+    }
+    return true;
+  });
 
   const hasHeader = homeHeaderActions.length > 0;
   const hasSubNav = homeSubNav.length > 0;

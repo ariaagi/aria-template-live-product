@@ -91,11 +91,22 @@ const HOME_ITEM: ResolvedNavItem = { href: "/home", label: "Home", icon: LayoutG
 const BILLING_ITEM: ResolvedNavItem = { href: "/billing", label: "Billing", icon: CreditCard };
 const SETTINGS_ITEM: ResolvedNavItem = { href: "/settings", label: "Settings", icon: Settings };
 
+/** True iff `href` contains no Next.js dynamic-segment placeholders. */
+function isStaticHref(href: string): boolean {
+  return !/\[[^/\]]+\]/.test(href);
+}
+
 /**
  * Merges template baseline (Home / Billing / Settings) with extras from
  * sidebar-nav.config.ts. Extras render between Home and Billing so the IA reads
  * Home → user features → Billing → Settings. Duplicate hrefs are dropped silently
  * (template owns Home/Billing/Settings hrefs).
+ *
+ * **Defense in depth**: hrefs containing `[bracket]` segments (e.g. `/home/boards/[id]`)
+ * are silently dropped. The sidebar renders on every page and has no dynamic id in
+ * scope, so a literal `[id]` href would 404 at runtime. The ARIA spec schema +
+ * audit-sidebar-nav-config catch this pre-deploy; this filter is the runtime safety net
+ * for already-shipped MVPs and future regressions.
  */
 function buildNavItems(): ResolvedNavItem[] {
   const baseHrefs = new Set([HOME_ITEM.href, BILLING_ITEM.href, SETTINGS_ITEM.href]);
@@ -104,6 +115,16 @@ function buildNavItems(): ResolvedNavItem[] {
   for (const item of extraSidebarNavItems) {
     const href = item.href.trim();
     if (!href.startsWith("/") || seen.has(href)) continue;
+    if (!isStaticHref(href)) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[app-shell] dropping sidebar item with dynamic href: "${href}". ` +
+            `The sidebar has no dynamic id in scope — link to it from the parent detail page using a template literal instead.`,
+        );
+      }
+      continue;
+    }
     seen.add(href);
     const icon = item.iconName ? (ICON_MAP[item.iconName] ?? Folder) : Folder;
     extras.push({ href, label: item.label, icon });
