@@ -23,6 +23,20 @@ const buildPlanSchema = z.object({
   stripePriceId: z.string().min(1).optional(),
 });
 
+/**
+ * Route-aware gating block (Phase 3 of the global paywall fix).
+ *
+ * `passthrough()` keeps unknown keys (forward-compat with future ARIA builds)
+ * while still typing the three fields the runtime helper actually consumes.
+ */
+const gatingSchema = z
+  .object({
+    requireActiveSubscriptionForProtectedActions: z.boolean().optional(),
+    gatedRoutes: z.array(z.string().min(1)).optional(),
+    hasPaidPlan: z.boolean().optional(),
+  })
+  .passthrough();
+
 const buildConfigSchema = z.object({
   appName: z.string().min(2),
   appTagline: z.string().min(6),
@@ -31,7 +45,7 @@ const buildConfigSchema = z.object({
   supportEmail: z.string().email().optional(),
   plans: z.array(buildPlanSchema).max(5).optional(),
   pricing: legacyPricingSchema,
-  gating: z.record(z.string(), z.unknown()).optional(),
+  gating: gatingSchema.optional(),
   integrations: z.array(z.enum(["neon", "stripe", "resend", "notion", "github", "vercel"])),
   branding: z.object({
     primaryColor: z.string().min(4),

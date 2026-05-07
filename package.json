@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:route-aware-gating": "npx tsx testscripts/test-route-aware-gating.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
