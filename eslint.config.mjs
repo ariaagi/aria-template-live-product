@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Audit harness scripts injected at build time by aria-dapp.
+    // Their CommonJS `require()` style imports must not be linted.
+    ".aria-audit/**",
   ]),
 ]);
 

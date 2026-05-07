@@ -43,21 +43,27 @@ export default function GlobalError({
           {error.digest ? (
             <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>Reference: {error.digest}</p>
           ) : null}
-          <a
-            href="/"
+          <button
+            type="button"
+            onClick={() => {
+              window.location.assign("/");
+            }}
             style={{
               display: "inline-block",
               marginTop: "1rem",
               padding: "0.5rem 1rem",
               background: "#fafafa",
               color: "#0a0a0a",
+              border: "none",
               borderRadius: "0.375rem",
               textDecoration: "none",
               fontSize: "0.875rem",
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             Reload
-          </a>
+          </button>
         </div>
       </body>
     </html>

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { requireStripeWebhookSecret } from "@/lib/env";
+import { errJson, okJson } from "@/lib/server/api/json-response";
 import { getStripe } from "@/lib/server/billing/stripe";
 import {
   markSubscriptionDeleted,
@@ -20,10 +20,10 @@ function userIdFromMetadata(
   return t || null;
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
-    return NextResponse.json({ ok: false, error: "missing_signature" }, { status: 400 });
+    return errJson("missing_signature", 400);
   }
 
   const payload = await request.text();
@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       requireStripeWebhookSecret()
     );
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_signature" }, { status: 400 });
+    return errJson("invalid_signature", 400);
   }
 
   try {
@@ -89,8 +89,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         break;
     }
   } catch {
-    return NextResponse.json({ ok: false, error: "webhook_process_failed" }, { status: 500 });
+    return errJson("webhook_process_failed", 500);
   }
 
-  return NextResponse.json({ ok: true });
+  return okJson({ received: true });
 }

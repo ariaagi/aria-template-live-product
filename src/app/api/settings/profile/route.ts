@@ -1,19 +1,23 @@
-import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { getDbPool } from "@/lib/db";
+import { errJson, okJson } from "@/lib/server/api/json-response";
+import { parseJsonBody } from "@/lib/server/api/parse-body";
 import { canUserRunProtectedAction } from "@/lib/server/billing/gating";
 
 export const runtime = "nodejs";
 
-function normalizeText(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
+const profileSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().max(254).optional(),
+  productUpdates: z.boolean().optional(),
+});
 
-export async function GET(request: Request): Promise<NextResponse> {
+export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return errJson("unauthorized", 401);
   }
 
   const pool = getDbPool();
@@ -22,35 +26,23 @@ export async function GET(request: Request): Promise<NextResponse> {
     [session.user.id]
   );
   const row = rows[0];
-  return NextResponse.json({
-    ok: true,
+  return okJson({
     name: row?.name ?? "",
     email: row?.email ?? "",
     productUpdates: true,
   });
 }
 
-export async function PATCH(request: Request): Promise<NextResponse> {
+export async function PATCH(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return errJson("unauthorized", 401);
   }
   if (!(await canUserRunProtectedAction(session.user.id))) {
-    return NextResponse.json(
-      { ok: false, error: "subscription_required_for_action" },
-      { status: 402 }
-    );
+    return errJson("subscription_required_for_action", 402);
   }
 
-  const body = (await request.json().catch(() => null)) as
-    | { name?: unknown; email?: unknown; productUpdates?: unknown }
-    | null;
-  const name = normalizeText(body?.name);
-  const ignoredEmail = normalizeText(body?.email);
-
-  if (!name) {
-    return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
-  }
+  const body = await parseJsonBody(request, profileSchema);
 
   const pool = getDbPool();
   try {
@@ -59,16 +51,15 @@ export async function PATCH(request: Request): Promise<NextResponse> {
        SET name = $2, "updatedAt" = now()
        WHERE id = $1
        RETURNING name, email`,
-      [session.user.id, name]
+      [session.user.id, body.name]
     );
     const row = rows[0];
-    return NextResponse.json({
-      ok: true,
-      name: row?.name ?? name,
-      email: row?.email ?? ignoredEmail ?? "",
+    return okJson({
+      name: row?.name ?? body.name,
+      email: row?.email ?? body.email ?? "",
       productUpdates: true,
     });
   } catch {
-    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
+    return errJson("internal_error", 500);
   }
 }

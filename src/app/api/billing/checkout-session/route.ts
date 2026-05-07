@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
-
 import { getBuildConfig, getBillingPlans } from "@/config/build-config";
 import { auth } from "@/lib/auth";
+import { errJson, okJson } from "@/lib/server/api/json-response";
 import { getRequestOrigin } from "@/lib/server/auth/app-origin";
 import { getStripe } from "@/lib/server/billing/stripe";
 
@@ -15,10 +14,10 @@ function normalizeText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user?.id || !session.user.email) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return errJson("unauthorized", 401);
   }
 
   const body = (await request.json().catch(() => null)) as CheckoutBody | null;
@@ -26,17 +25,14 @@ export async function POST(request: Request): Promise<NextResponse> {
   const config = getBuildConfig();
   const plans = getBillingPlans(config).filter((plan) => !plan.isFree && plan.amount > 0);
   if (!plans.length) {
-    return NextResponse.json({ ok: false, error: "no_paid_plans" }, { status: 400 });
+    return errJson("no_paid_plans", 400);
   }
 
   const selectedPlan =
     plans.find((plan) => plan.tierSlug === wantedTierSlug) ??
     plans[0];
   if (!selectedPlan?.stripePriceId) {
-    return NextResponse.json(
-      { ok: false, error: "missing_stripe_price_id" },
-      { status: 409 }
-    );
+    return errJson("missing_stripe_price_id", 409);
   }
 
   const origin = getRequestOrigin(request);
@@ -63,7 +59,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   });
 
   if (!stripeSession.url) {
-    return NextResponse.json({ ok: false, error: "checkout_url_missing" }, { status: 502 });
+    return errJson("checkout_url_missing", 502);
   }
-  return NextResponse.json({ ok: true, url: stripeSession.url });
+  return okJson({ url: stripeSession.url });
 }

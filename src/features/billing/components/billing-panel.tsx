@@ -35,11 +35,13 @@ function isSubscriptionBillingActive(sub: NonNullable<BillingStatus>): boolean {
 
 type ApiJson = {
   ok?: boolean;
-  url?: string;
+  data?: {
+    url?: string;
+    subscription?: BillingStatus;
+    stripeCustomerId?: string | null;
+  };
   error?: string;
   detail?: string;
-  redirectTo?: string;
-  subscription?: BillingStatus;
 };
 
 function portalErrorMessage(data: ApiJson): string {
@@ -60,16 +62,6 @@ function portalErrorMessage(data: ApiJson): string {
     return "Could not open billing portal. Check Stripe keys and try again.";
   }
   return code ?? "portal_failed";
-}
-
-function shouldFollowPortalRedirect(redirectTo: string): boolean {
-  try {
-    const next = new URL(redirectTo);
-    const here = new URL(window.location.href);
-    return next.pathname !== here.pathname || next.search !== here.search;
-  } catch {
-    return true;
-  }
 }
 
 async function postJson(url: string, body?: unknown): Promise<ApiJson> {
@@ -163,9 +155,12 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
       const response = await fetch("/api/billing/status", {
         credentials: "include",
       });
-      const data = (await response.json()) as { ok?: boolean; subscription?: BillingStatus };
+      const data = (await response.json()) as {
+        ok?: boolean;
+        data?: { subscription?: BillingStatus };
+      };
       if (response.ok && data?.ok) {
-        setSubscription(data.subscription ?? null);
+        setSubscription(data.data?.subscription ?? null);
       } else {
         setSubscription(null);
       }
@@ -188,9 +183,12 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
               const response = await fetch("/api/billing/status", {
                 credentials: "include",
               });
-              const data = (await response.json()) as { ok?: boolean; subscription?: BillingStatus };
+              const data = (await response.json()) as {
+                ok?: boolean;
+                data?: { subscription?: BillingStatus };
+              };
               if (response.ok && data?.ok) {
-                setSubscription(data.subscription ?? null);
+                setSubscription(data.data?.subscription ?? null);
               } else {
                 setSubscription(null);
               }
@@ -278,11 +276,12 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
               const data = await postJson("/api/billing/checkout-session", {
                 tierSlug: targetTierSlug,
               });
-              if (!data?.ok || !data?.url) {
+              const checkoutUrl = data?.data?.url;
+              if (!data?.ok || !checkoutUrl) {
                 setErrorMessage(data?.error ?? "checkout_failed");
                 return;
               }
-              window.location.href = data.url;
+              window.location.href = checkoutUrl;
             } catch {
               setErrorMessage("checkout_failed");
             } finally {
@@ -303,16 +302,9 @@ export function BillingPanel({ buildConfig }: { buildConfig: BuildConfig }) {
             setErrorMessage(null);
             try {
               const data = await postJson("/api/billing/portal");
-              if (data?.ok && data?.url) {
-                window.location.href = data.url;
-                return;
-              }
-              if (
-                typeof data?.redirectTo === "string" &&
-                data.redirectTo.length > 0 &&
-                shouldFollowPortalRedirect(data.redirectTo)
-              ) {
-                window.location.href = data.redirectTo;
+              const portalUrl = data?.data?.url;
+              if (data?.ok && portalUrl) {
+                window.location.href = portalUrl;
                 return;
               }
               setErrorMessage(portalErrorMessage(data));

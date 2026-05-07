@@ -69,7 +69,7 @@ export function isRouteGatedByConfig(routePath?: string): boolean {
  *
  * ```ts
  * if (!(await canUserRunProtectedAction(user.id, "/home/boards/new"))) {
- *   return NextResponse.json({ ok: false, error: "subscription_required_for_action" }, { status: 402 });
+ *   return errJson("subscription_required_for_action", 402);
  * }
  * ```
  *

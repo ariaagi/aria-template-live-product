@@ -11,10 +11,13 @@ import { Switch } from "@/components/ui/switch";
 
 type ProfilePayload = {
   ok: boolean;
-  name?: string;
-  email?: string;
-  productUpdates?: boolean;
+  data?: {
+    name?: string;
+    email?: string;
+    productUpdates?: boolean;
+  };
   error?: string;
+  detail?: string;
 };
 
 export function SettingsProfileForm(): React.ReactElement {
@@ -40,9 +43,9 @@ export function SettingsProfileForm(): React.ReactElement {
         if (!res.ok || !data.ok) {
           throw new Error("load_failed");
         }
-        setName(data.name ?? "");
-        setEmail(data.email ?? "");
-        setProductUpdates(Boolean(data.productUpdates));
+        setName(data.data?.name ?? "");
+        setEmail(data.data?.email ?? "");
+        setProductUpdates(Boolean(data.data?.productUpdates));
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -79,8 +82,8 @@ export function SettingsProfileForm(): React.ReactElement {
             toast.error("Could not save profile.");
             return;
           }
-          setName(data.name ?? name);
-          setEmail(data.email ?? email);
+          setName(data.data?.name ?? name);
+          setEmail(data.data?.email ?? email);
           toast.success("Profile saved.");
         } catch {
           toast.error("Could not save profile.");
